@@ -95,6 +95,7 @@ jobs:
         uses: pier-oliviert/actions@615926fbb5d71ced89ba58f26b21e269302711a1
         with:
           args: /actions/index.ts create helm
+          auth_token: ${{ secrets.GITHUB_TOKEN }}
           repo: ${{ github.repository }}
           upload_url: ${{ needs.release.outputs.upload_url }}
           version: ${{ needs.version.outputs.version }}
