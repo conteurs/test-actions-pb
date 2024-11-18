@@ -15,23 +15,24 @@ env:
 
 jobs:
   version:
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.action.outputs.tag }}
       version: ${{ steps.action.outputs.version }}
-      version_start_hash: ${{ steps.action.outputs.version_start_hash}}
-      version_end_hash: ${{ steps.action.outputs.version_end_hash}}
+      commit_start: ${{ steps.action.outputs.commit_start}}
+      commit_end: ${{ steps.action.outputs.commit_end}}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Generate new version
         id: action
-        uses: pier-oliviert/actions@e003d23f5b2056d6b3a0c019b4516f668689dd9b
+        uses: pier-oliviert/actions@c72f8423084220623ceeb3a74a141e751c9ce612
         with:
           args: /actions/index.ts create version
-          auth_token: ${{ secrets.GH_ACTION_TOKEN }}
           repo: ${{ github.repository}}
-          variable: "PHONEBOOK_VERSION"
 
   changelog:
     permissions:
@@ -44,22 +45,22 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - name: Generate Changelog
-        uses: pier-oliviert/actions@e003d23f5b2056d6b3a0c019b4516f668689dd9b
+        uses: pier-oliviert/actions@c72f8423084220623ceeb3a74a141e751c9ce612
         id: action
         env:
           GIT_CLIFF__CHANGELOG__HEADER: ""
           GIT_CLIFF__CHANGELOG__FOOTER: ""
         with:
-          auth_token: ${{ secrets.GH_ACTION_TOKEN }}
           args: /actions/index.ts create changelogs
           version: ${{needs.version.outputs.version}}
-          version_start_hash: ${{needs.version.outputs.version_start_hash}}
-          version_end_hash: ${{needs.version.outputs.version_end_hash}}
+          commit_start: ${{needs.version.outputs.commit_start}}
+          commit_end: ${{needs.version.outputs.commit_end}}
 
   release:
+    permissions:
+      contents: write
+      id-token: write
     runs-on: ubuntu-latest
     needs: ["version", "changelog"]
     outputs:
@@ -69,10 +70,9 @@ jobs:
         uses: actions/checkout@v4
       - name: Deploy Helm package
         id: action
-        uses: pier-oliviert/actions@e003d23f5b2056d6b3a0c019b4516f668689dd9b
+        uses: pier-oliviert/actions@c72f8423084220623ceeb3a74a141e751c9ce612
         with:
           args: /actions/index.ts create release
-          auth_token: ${{ secrets.GH_ACTION_TOKEN }}
           repo: ${{ github.repository}}
           version: ${{ needs.version.outputs.version }}
           tag: ${{ needs.version.outputs.tag }}
@@ -91,104 +91,9 @@ jobs:
           ref: main
           fetch-depth: 0
       - name: Deploy Helm package
-        uses: pier-oliviert/actions@e003d23f5b2056d6b3a0c019b4516f668689dd9b
+        uses: pier-oliviert/actions@c72f8423084220623ceeb3a74a141e751c9ce612
         with:
           args: /actions/index.ts create helm
-          auth_token: ${{ secrets.GH_ACTION_TOKEN }}
           repo: ${{ github.repository}}
           release_upload_url: ${{ needs.release.outputs.upload_url }}
           version: ${{ needs.version.outputs.version }}
-
-  build-and-push-image:
-    runs-on: ubuntu-latest
-    needs: ["version"]
-    permissions:
-      contents: write
-      packages: write
-      attestations: write
-      id-token: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Log in to the Container registry
-        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Controller
-        id: push
-        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
-        env:
-          PROVIDER_VERSION: ${{vars.PHONEBOOK_VERSION}}
-        with:
-          file: ${{ github.workspace }}/Dockerfile.controller
-          context: .
-          target: controller
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{github.repository}}:latest
-            ${{ env.REGISTRY }}/${{github.repository}}:${{vars.PHONEBOOK_VERSION}}
-
-      - name: "Providers: AWS"
-        id: aws
-        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
-        with:
-          file: ${{ github.workspace }}/Dockerfile.providers
-          context: .
-          target: aws
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/pier-oliviert/providers-aws:latest
-            ${{ env.REGISTRY }}/pier-oliviert/providers-aws:${{vars.PHONEBOOK_VERSION}}
-
-      - name: "Providers: Azure"
-        id: azure
-        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
-        with:
-          file: ${{ github.workspace }}/Dockerfile.providers
-          context: .
-          target: azure
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/pier-oliviert/providers-azure:latest
-            ${{ env.REGISTRY }}/pier-oliviert/providers-azure:${{vars.PHONEBOOK_VERSION}}
-
-      - name: "Providers: Cloudflare"
-        id: cloudflare
-        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
-        with:
-          file: ${{ github.workspace }}/Dockerfile.providers
-          context: .
-          target: cloudflare
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/pier-oliviert/providers-cloudflare:latest
-            ${{ env.REGISTRY }}/pier-oliviert/providers-cloudflare:${{vars.PHONEBOOK_VERSION}}
-
-      - name: "Providers: deSEC"
-        id: desec
-        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
-        with:
-          file: ${{ github.workspace }}/Dockerfile.providers
-          context: .
-          target: desec
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/pier-oliviert/providers-desec:latest
-            ${{ env.REGISTRY }}/pier-oliviert/providers-desec:${{vars.PHONEBOOK_VERSION}}
-
-      - name: "Providers: Gcore"
-        id: gcore
-        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
-        with:
-          file: ${{ github.workspace }}/Dockerfile.providers
-          context: .
-          target: gcore
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/pier-oliviert/providers-gcore:latest
-            ${{ env.REGISTRY }}/pier-oliviert/providers-gcore:${{vars.PHONEBOOK_VERSION}}
