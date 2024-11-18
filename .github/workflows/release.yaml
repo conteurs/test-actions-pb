@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Generate new version
         id: action
-        uses: pier-oliviert/actions@c72f8423084220623ceeb3a74a141e751c9ce612
+        uses: pier-oliviert/actions@67f151b22137af0d6835cc90f1354f5ccdedef1d
         with:
           args: /actions/index.ts create version
           repo: ${{ github.repository}}
@@ -46,7 +46,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Generate Changelog
-        uses: pier-oliviert/actions@c72f8423084220623ceeb3a74a141e751c9ce612
+        uses: pier-oliviert/actions@67f151b22137af0d6835cc90f1354f5ccdedef1d
         id: action
         env:
           GIT_CLIFF__CHANGELOG__HEADER: ""
@@ -70,7 +70,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Deploy Helm package
         id: action
-        uses: pier-oliviert/actions@c72f8423084220623ceeb3a74a141e751c9ce612
+        uses: pier-oliviert/actions@67f151b22137af0d6835cc90f1354f5ccdedef1d
         with:
           args: /actions/index.ts create release
           repo: ${{ github.repository}}
@@ -91,7 +91,7 @@ jobs:
           ref: main
           fetch-depth: 0
       - name: Deploy Helm package
-        uses: pier-oliviert/actions@c72f8423084220623ceeb3a74a141e751c9ce612
+        uses: pier-oliviert/actions@67f151b22137af0d6835cc90f1354f5ccdedef1d
         with:
           args: /actions/index.ts create helm
           repo: ${{ github.repository}}
